@@ -1,0 +1,43 @@
+name: KinotekaTV
+options:
+  bundleIdPrefix: dev.kinoteka
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+targets:
+  KinotekaTV:
+    type: application
+    platform: iOS
+    sources:
+      - KinotekaTV
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.kinoteka.tv
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: KinotekaTV/Info.plist
+      properties:
+        CFBundleDisplayName: "Кинотека TV"
+        UIBackgroundModes: [audio]
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+schemes:
+  KinotekaTV:
+    build:
+      targets:
+        KinotekaTV: all
+    run:
+      config: Release
