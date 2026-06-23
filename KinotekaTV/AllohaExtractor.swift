@@ -33,6 +33,14 @@ final class AllohaExtractor: NSObject, WKScriptMessageHandler, WKNavigationDeleg
         }
     }
 
+    // Public: the Alloha embed URL (for the in-app webview player). For TV we append
+    // season/episode (the balancer player also has its own selectors as fallback).
+    func embedURL(imdb: String, isTV: Bool, season: Int, episode: Int) async -> String? {
+        guard let embed = try? await allohaEmbed(imdb: imdb) else { return nil }
+        if isTV { return embed + (embed.contains("?") ? "&" : "?") + "season=\(season)&episode=\(episode)" }
+        return embed
+    }
+
     // MARK: balancer -> Alloha embed url
     private func allohaEmbed(imdb: String) async throws -> String? {
         guard let url = URL(string: "\(balancer)/api/players?imdb=\(imdb)") else { return nil }

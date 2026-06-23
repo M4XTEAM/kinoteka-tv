@@ -7,7 +7,17 @@ struct TMDBItem: Identifiable, Hashable {
     let year: String
     let isTV: Bool
     let posterPath: String?
-    var posterURL: URL? { posterPath.flatMap { URL(string: "https://image.tmdb.org/t/p/w185\($0)") } }
+    var overview: String = ""
+    var backdropPath: String? = nil
+    var posterURL: URL? { posterPath.flatMap { URL(string: "https://image.tmdb.org/t/p/w342\($0)") } }
+    var backdropURL: URL? { backdropPath.flatMap { URL(string: "https://image.tmdb.org/t/p/w780\($0)") } }
+}
+
+// A titled row of items for the home screen.
+struct HomeRow: Identifiable {
+    let id = UUID()
+    let title: String
+    let items: [TMDBItem]
 }
 
 // One translation (voice) with its per-quality master m3u8 URLs, parsed from Alloha /bnsi.
