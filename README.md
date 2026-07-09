@@ -1,51 +1,47 @@
-# Кинотека TV (iOS, sideload)
+# Кинотека — нативный iOS-клиент (sideload)
 
-Нативное iOS-приложение: ищешь тайтл → **«Смотреть на Apple TV»** → поток Alloha
-извлекается **на устройстве** (твой резидентный IP → нет гео-блока) → выбор
-озвучки/качества → играешь и жмёшь **AirPlay** на Apple TV.
+Полностью нативное SwiftUI-приложение (iOS 26, **Liquid Glass**) со всем
+функционалом веб-версии Кинотеки: логин/синк, каталог фильмов и сериалов,
+hero-карусель как в Apple TV+, детальные страницы, поиск + ИИ-ассистент,
+избранное/папки/подписки/«Продолжить», нативный плеер (AirPlay, субтитры, PiP).
 
-Почему нативно (а не PWA): только нативный `WKWebView` может инжектить скрипт во
-**все фреймы** (`forMainFrameOnly: false`) и перехватить ответ `/bnsi` внутри
-cross-origin iframe Alloha. Веб-страница так не может (CORS/sandbox).
+## Что нативное
+- **Меню — как приложение Apple TV+**: системный плавающий Liquid Glass таб-бар
+  (`TabView` + `.tabBarMinimizeBehavior(.onScrollDown)`), «Поиск» отдельной
+  стеклянной кнопкой (`Tab(role: .search)`). Бар сам сжимается при скролле.
+- **Hero-анимация сохранена 1:1 с вебом**: фон-бэкдропы КРОССФЕЙДЯТ по доле
+  горизонтального свайпа, контент (лого/мета/кнопка) листается поверх; при
+  вертикальном скролле фон отъезжает медленнее (параллакс) и растягивается при
+  оттягивании. Тап по слайду — zoom-переход (`matchedTransitionSource` +
+  `.navigationTransition(.zoom)`) в детальную.
+- **Liquid Glass везде**: кнопки (`.glass` / `.glassProminent`), чипы жанров и
+  стримингов, панель плеера, карточки — на `.glassEffect(...)`.
 
-## Архитектура
-- **TMDB** — поиск по названию → `imdb_id` (ключ зашит в `TMDB.swift`).
-- **AllohaExtractor** — скрытый (alpha 0.02, полноразмерный) `WKWebView` грузит
-  `fbphdplay.top` → Alloha-embed внутри iframe; JS-хук на XHR/fetch ловит ответ
-  `/bnsi/movies|serials/{id}` (плеер сам считает анти-бот `borth`). Сериалы: сезон/серия
-  кладём в URL embed и дублируем выбором в `seasonType1/episodeType1`.
-- **Плеер** — `AVPlayerViewController` (нативные контролы + кнопка AirPlay). Поток идёт
-  через HF-прокси `MNQE-alloha-extract.hf.space/api?url=…`, который инжектит Referer/UA
-  (Apple TV свои заголовки на AirPlay не шлёт; VK CDN отдаёт US-IP HF — проверено).
+## Данные и источники (та же схема, что в PWA)
+- **TMDB** (`TMDB.swift`) — каталог, поиск, детали, персоны, жанры, провайдеры.
+- **Бэкенд Кинотеки** (`Backend.swift`, `kinoteka.pages.dev`): вход
+  `POST /__auth/login` → cookie `kt_session` (живёт в `HTTPCookieStorage`,
+  переживает перезапуск), `/api/me`, `/api/sync` (полный merge-синк с метками
+  `u`/надгробиями `d` — формат JSON БАЙТ-В-БАЙТ как у веб-версии, данные общие),
+  `/api/players` (Alloha-iframe), `/api/kp` (Кинопаб), `/api/yl-egress`
+  (телефон-egress для ylitron), `/api/ai` (Gemini-ассистент).
+- **Плеер** (`PlayerScreen.swift`) — нативный `AVPlayer`/`AVPlayerViewController`
+  (AirPlay, CC-субтитры, PiP, фуллскрин из коробки). Схема источников как в вебе:
+  - Сериалы → **Кинотека** = ylitron (SSE с телефона), **Кинотека 2** = Кинопаб,
+    **Кинотека 3** = Alloha (webview).
+  - Фильмы → **Кинотека** = Кинопаб, **Кинотека 2** = Alloha (webview).
+  - Видео летит ПРЯМО с CDN (сырой master; при субтитрах — синтетический
+    `/ylmaster` с вшитой дорожкой), как «нативная ветка» веба. Alloha остаётся
+    iframe'ом внутри `WKWebView` (с гардом от frame-busting).
+  - Прогресс/сезон/серия/озвучка сохраняются в `Store` → синкаются на сервер.
 
-## Сборка IPA в облаке (Mac не нужен)
-1. Создай **новый отдельный** GitHub-репозиторий (НЕ клади сюда основной проект Кинотеки —
-   там секреты). Запушь **содержимое папки `ios-app/`** в КОРЕНЬ репозитория, чтобы было:
+## Сборка IPA в облаке (Mac не нужен) — GitHub Actions
+Собирается на раннере **macos-26** (Xcode 26, для Liquid Glass API).
+1. Запушь **содержимое папки `ios-app/`** в КОРЕНЬ отдельного репозитория
+   (`M4XTEAM/kinoteka-tv`), чтобы было:
    ```
    <repo>/.github/workflows/build.yml
    <repo>/project.yml
    <repo>/KinotekaTV/*.swift
    ```
-2. GitHub → вкладка **Actions** → workflow `build-ipa` запустится сам (или Run workflow).
-3. По завершении скачай артефакт **KinotekaTV-unsigned-ipa** (это `KinotekaTV-unsigned.ipa`).
-
-## Установка на iPhone (sideload, без Mac)
-- **SideStore** (рекоменд., работает без постоянного Mac) или **AltStore**:
-  - Установи SideStore/AltStore на iPhone (через их инструкцию + anisette).
-  - В приложении: **+** → выбери `KinotekaTV-unsigned.ipa` → оно подпишется твоим Apple ID.
-  - **Бесплатный** Apple ID: сертификат живёт 7 дней → SideStore/AltStore авто-обновляет
-    по WiFi; раз в неделю держи их открытыми. **Платный** ($99/год): год без возни.
-- Альтернатива с Mac: открыть в Xcode (после `xcodegen generate`) и запустить на устройстве.
-
-## Ограничения v1
-- Источник — **Alloha** (1080p H.264). ylitron (4K) — позже, у него закрыт lookup imdb→plid.
-- Извлечение ~6–25 c (плеер должен реально стартануть в скрытом webview).
-- HF-прокси нужен только для AirPlay-совместимости; держи Space живым (или замени на свой).
-- Это первая версия — если CI выдаст ошибки компиляции, пришли лог, поправлю.
-
-## Локальная генерация проекта (если есть Mac)
-```
-brew install xcodegen
-xcodegen generate
-open KinotekaTV.xcodeproj
-```
+2. Вкладка **A
