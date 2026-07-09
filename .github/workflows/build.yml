@@ -1,6 +1,7 @@
 name: build-ipa
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -42,6 +43,7 @@ jobs:
           cp -R "$APP" Payload/
           zip -qry KinotekaTV-unsigned.ipa Payload
           ls -la KinotekaTV-unsigned.ipa
+          cp KinotekaTV-unsigned.ipa "$RUNNER_TEMP/KinotekaTV-unsigned.ipa"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -49,7 +51,7 @@ jobs:
           path: KinotekaTV-unsigned.ipa
           if-no-files-found: error
 
-      - name: Publish Release (для скачивания без API)
+      - name: Publish Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -58,3 +60,14 @@ jobs:
             --title "KinotekaTV unsigned IPA" \
             --notes "Автосборка ${GITHUB_SHA}" \
             --target "$GITHUB_SHA"
+
+      - name: Commit IPA to ipa-bin branch (git-доставка)
+        run: |
+          git config user.email "ci@kinoteka"
+          git config user.name "CI"
+          git switch --orphan ipa-bin
+          cp "$RUNNER_TEMP/KinotekaTV-unsigned.ipa" ./KinotekaTV-unsigned.ipa
+          echo "IPA build of $GITHUB_SHA" > README.md
+          git add KinotekaTV-unsigned.ipa README.md
+          git commit -m "ipa build ${GITHUB_SHA}"
+          git push -f origin ipa-bin
