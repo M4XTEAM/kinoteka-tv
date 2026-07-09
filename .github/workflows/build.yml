@@ -43,7 +43,6 @@ jobs:
           cp -R "$APP" Payload/
           zip -qry KinotekaTV-unsigned.ipa Payload
           ls -la KinotekaTV-unsigned.ipa
-          cp KinotekaTV-unsigned.ipa "$RUNNER_TEMP/KinotekaTV-unsigned.ipa"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -62,12 +61,12 @@ jobs:
             --target "$GITHUB_SHA"
 
       - name: Commit IPA to ipa-bin branch (git-доставка)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.email "ci@kinoteka"
-          git config user.name "CI"
-          git switch --orphan ipa-bin
-          cp "$RUNNER_TEMP/KinotekaTV-unsigned.ipa" ./KinotekaTV-unsigned.ipa
-          echo "IPA build of $GITHUB_SHA" > README.md
-          git add KinotekaTV-unsigned.ipa README.md
-          git commit -m "ipa build ${GITHUB_SHA}"
-          git push -f origin ipa-bin
+          git checkout --orphan ipa-bin
+          git reset
+          echo "IPA build of ${GITHUB_SHA}" > IPA_README.txt
+          git add -f KinotekaTV-unsigned.ipa IPA_README.txt
+          git -c user.email=ci@kinoteka -c user.name=CI commit -m "ipa build ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ipa-bin
