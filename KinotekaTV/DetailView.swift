@@ -14,6 +14,7 @@ struct DetailView: View {
 
     @State private var detail: MediaDetail?
     @State private var logoPath: String?
+    @State private var stills: [String] = []
     @State private var trailer: VideoItem?
     @State private var error: String?
     @State private var scrollY: CGFloat = 0
@@ -147,6 +148,8 @@ struct DetailView: View {
             metaRow(d)
                 .frame(maxWidth: .infinity)
 
+            releaseBox(d)
+
             actionButtons(d)
 
             if let tagline = d.tagline, !tagline.isEmpty {
@@ -187,14 +190,190 @@ struct DetailView: View {
 
         if route.type == .tv {
             episodesSection(d)
+            tvInfoBlock(d)
         }
 
         if let cast = d.credits?.cast, !cast.isEmpty {
             castShelf(Array(cast.prefix(20)))
         }
 
+        stillsShelf()
+
+        if route.type == .movie {
+            financeBlock(d)
+        }
+
         let similar = (d.similar?.results ?? []).map { $0.asMedia(fallbackType: route.type) }.filter { !$0.title.isEmpty }
         Shelf(title: "Похожее", items: similar)
+    }
+
+    // ---- Релиз-бокс: когда в кино / когда в сети / когда следующая серия + подписка ----
+    @ViewBuilder
+    private func releaseBox(_ d: MediaDetail) -> some View {
+        let rows = releaseRows(d)
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    Label {
+                        Text(row.text)
+                            .font(.subheadline.weight(.medium))
+                            .fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: row.icon).foregroundStyle(Theme.accent)
+                    }
+                }
+                if let media {
+                    Button {
+                        store.subToggle(media)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: store.isSub(d.id, route.type) ? "bell.fill" : "bell")
+                            Text(store.isSub(d.id, route.type) ? "Вы подписаны" : "Сообщить о выходе")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 40)
+                    }
+                    .buttonStyle(.glass)
+                    .tint(store.isSub(d.id, route.type) ? Theme.accent : nil)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+            .padding(.horizontal, 20)
+        }
+    }
+
+    private struct ReleaseRow { let icon: String; let text: String }
+
+    private func releaseRows(_ d: MediaDetail) -> [ReleaseRow] {
+        var rows: [ReleaseRow] = []
+        if route.type == .movie {
+            // Показываем только пока фильм ещё не вышел в сети.
+            let digital = d.digitalDate
+            let notYetOnline = digital == nil || Fmt.isFuture(digital)
+            guard notYetOnline else { return [] }
+            if Fmt.isFuture(d.releaseDate), let r = d.releaseDate {
+                rows.append(.init(icon: "film", text: "В кино с " + Fmt.date(r)))
+            }
+            if let dig = digital {
+                rows.append(.init(icon: "globe", text: "Онлайн с " + Fmt.date(dig)))
+            } else {
+                rows.append(.init(icon: "globe", text: "Онлайн: дата уточняется"))
+            }
+        } else {
+            if let next = d.nextEpisodeToAir, let air = next.airDate, !air.isEmpty {
+                let se = next.seasonNumber.map { s in "S\(s)" + (next.episodeNumber.map { "·E\($0)" } ?? "") } ?? ""
+                rows.append(.init(icon: "calendar", text: "Следующая серия \(se) — " + Fmt.date(air)))
+            }
+        }
+        return rows
+    }
+
+    // ---- Кадры из фильма/сериала ----
+    @ViewBuilder
+    private func stillsShelf() -> some View {
+        if !stills.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(title: "Кадры")
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(stills.prefix(20), id: \.self) { path in
+                            RemoteImage(url: TMDB.backdrop(path, "w780"))
+                                .frame(width: 240, height: 135)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                }
+            }
+            .padding(.top, 24)
+        }
+    }
+
+    // ---- О сериале ----
+    @ViewBuilder
+    private func tvInfoBlock(_ d: MediaDetail) -> some View {
+        let rows = tvInfoRows(d)
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(title: "О сериале")
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                        HStack(alignment: .top) {
+                            Text(row.0).foregroundStyle(.secondary)
+                            Spacer(minLength: 16)
+                            Text(row.1).multilineTextAlignment(.trailing)
+                        }
+                        .font(.subheadline)
+                        .padding(.vertical, 10)
+                        if i < rows.count - 1 { Divider().overlay(Color.white.opacity(0.08)) }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+                .padding(.horizontal, 20)
+            }
+            .padding(.top, 24)
+        }
+    }
+
+    private func tvInfoRows(_ d: MediaDetail) -> [(String, String)] {
+        var rows: [(String, String)] = []
+        if let s = statusRu(d.status) { rows.append(("Статус", s)) }
+        if let n = d.numberOfSeasons, n > 0 { rows.append(("Сезонов", "\(n)")) }
+        if let e = d.numberOfEpisodes, e > 0 { rows.append(("Серий", "\(e)")) }
+        if let creators = d.createdBy, !creators.isEmpty {
+            rows.append(("Создатели", creators.map(\.name).joined(separator: ", ")))
+        }
+        if let nets = d.networks, !nets.isEmpty {
+            rows.append(("Сеть", nets.map(\.name).joined(separator: ", ")))
+        }
+        if let air = d.firstAirDate, !air.isEmpty { rows.append(("Премьера", Fmt.date(air))) }
+        return rows
+    }
+
+    private func statusRu(_ s: String?) -> String? {
+        guard let s, !s.isEmpty else { return nil }
+        switch s {
+        case "Returning Series": return "Выходит"
+        case "Ended": return "Завершён"
+        case "Canceled": return "Закрыт"
+        case "In Production": return "В производстве"
+        case "Planned": return "Запланирован"
+        default: return s
+        }
+    }
+
+    // ---- Сборы (бюджет / кассовые сборы) ----
+    @ViewBuilder
+    private func financeBlock(_ d: MediaDetail) -> some View {
+        let rows: [(String, String)] = [
+            (d.budget ?? 0) > 0 ? ("Бюджет", Fmt.money(d.budget)) : nil,
+            (d.revenue ?? 0) > 0 ? ("Сборы в мире", Fmt.money(d.revenue)) : nil,
+        ].compactMap { $0 }
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader(title: "Сборы")
+                VStack(spacing: 0) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                        HStack {
+                            Text(row.0).foregroundStyle(.secondary)
+                            Spacer()
+                            Text(row.1).fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .padding(.vertical, 10)
+                        if i < rows.count - 1 { Divider().overlay(Color.white.opacity(0.08)) }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+                .padding(.horizontal, 20)
+            }
+            .padding(.top, 24)
+        }
     }
 
     private func genreChips(_ d: MediaDetail) -> [Genre] { d.genres ?? [] }
@@ -252,10 +431,12 @@ struct DetailView: View {
                         .fontWeight(.semibold)
                         .lineLimit(1)
                 }
+                .foregroundStyle(Theme.onAccent)   // тёмный текст поверх лаймовой кнопки
                 .frame(maxWidth: .infinity)
                 .frame(height: 50)
             }
             .buttonStyle(.glassProminent)
+            .tint(Theme.accent)
             .disabled(widResolved && wid == nil)
 
             HStack(spacing: 10) {
@@ -429,7 +610,12 @@ struct DetailView: View {
             detail = d
             selectedSeason = 1
 
-            logoPath = (try? await TMDB.images(route.type, route.id)).flatMap { TMDB.pickLogo($0) }
+            let imgs = try? await TMDB.images(route.type, route.id)
+            logoPath = imgs.flatMap { TMDB.pickLogo($0) }
+            // Кадры: бэкдропы без логотипа/текста (язык null), запасной вариант — любые.
+            let backs = imgs?.backdrops ?? []
+            let clean = backs.filter { $0.iso6391 == nil }.compactMap(\.filePath)
+            stills = (clean.isEmpty ? backs.compactMap(\.filePath) : clean)
             trailer = pickTrailer((try? await TMDB.videos(route.type, route.id)) ?? [])
 
             if route.type == .tv {

@@ -8,6 +8,7 @@ import SwiftUI
 enum Theme {
     static let accent = Color(red: 0xAE / 255.0, green: 0xF2 / 255.0, blue: 0x3C / 255.0)
     static let genreAccent = Color(red: 0xB3 / 255.0, green: 0xFE / 255.0, blue: 0x4B / 255.0)
+    static let onAccent = Color(red: 0x16 / 255.0, green: 0x28 / 255.0, blue: 0x0A / 255.0) // тёмный текст поверх лайма
     static let bg = Color(red: 0x0A / 255.0, green: 0x0A / 255.0, blue: 0x0C / 255.0)
     static let card = Color.white.opacity(0.08)
 }
@@ -34,6 +35,23 @@ enum Fmt {
         guard let m = minutes, m > 0 else { return "" }
         if m < 60 { return "\(m) мин" }
         return "\(m / 60) ч \(m % 60) мин"
+    }
+
+    // Деньги (бюджет/сборы) в компактном виде: $1.2 млрд · $160 млн · $950 000.
+    static func money(_ v: Int?) -> String {
+        guard let v, v > 0 else { return "" }
+        if v >= 1_000_000_000 { return String(format: "$%.1f млрд", Double(v) / 1e9) }
+        if v >= 1_000_000 { return "$\(v / 1_000_000) млн" }
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.groupingSeparator = " "
+        return "$" + (f.string(from: NSNumber(value: v)) ?? "\(v)")
+    }
+
+    // Дата в будущем? (сравниваем ISO yyyy-MM-dd строками — лексикографически корректно)
+    static func isFuture(_ s: String?) -> Bool {
+        guard let s, s.count >= 10 else { return false }
+        return String(s.prefix(10)) > ISO8601DateFormatter.dateOnly.string(from: Date())
     }
 
     static func date(_ s: String?) -> String {

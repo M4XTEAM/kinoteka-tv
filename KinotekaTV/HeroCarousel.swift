@@ -27,7 +27,7 @@ struct HeroCarousel: View {
     @State private var pagePos: CGFloat = 0
 
     private var height: CGFloat {
-        UIScreen.main.bounds.height * 0.62
+        UIScreen.main.bounds.height * 0.66
     }
 
     var body: some View {

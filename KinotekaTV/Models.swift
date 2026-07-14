@@ -150,6 +150,18 @@ struct ContentRatingsWrap: Codable {
     let results: [Entry]?
 }
 
+struct Creator: Codable, Hashable, Identifiable {
+    let id: Int
+    let name: String
+    let profilePath: String?
+}
+
+struct Network: Codable, Hashable, Identifiable {
+    let id: Int
+    let name: String
+    let logoPath: String?
+}
+
 struct MediaDetail: Codable {
     let id: Int
     let title: String?
@@ -167,6 +179,10 @@ struct MediaDetail: Codable {
     let genres: [Genre]?
     let tagline: String?
     let status: String?
+    let budget: Int?
+    let revenue: Int?
+    let createdBy: [Creator]?
+    let networks: [Network]?
     let credits: Credits?
     let similar: TMDBPage?
     let externalIds: ExternalIds?
@@ -177,6 +193,19 @@ struct MediaDetail: Codable {
 
     var displayTitle: String { title ?? name ?? "" }
     var date: String? { releaseDate ?? firstAirDate }
+
+    // Дата цифрового релиза (type 4 = Digital, 6 = TV) из release_dates (US→RU→любой).
+    var digitalDate: String? {
+        let entries = releaseDates?.results ?? []
+        func pick(_ iso: String) -> String? {
+            entries.first { $0.iso31661 == iso }?.releaseDates?
+                .first { $0.type == 4 || $0.type == 6 }?.releaseDate
+        }
+        let raw = pick("US") ?? pick("RU") ?? entries.compactMap { e in
+            e.releaseDates?.first { $0.type == 4 || $0.type == 6 }?.releaseDate
+        }.first
+        return raw.map { String($0.prefix(10)) }
+    }
 
     func asMedia(_ type: MediaType) -> MediaItem {
         MediaItem(id: id, mediaType: type, title: displayTitle,
