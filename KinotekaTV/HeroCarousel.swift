@@ -82,8 +82,11 @@ struct HeroCarousel: View {
             ForEach(Array(entries.enumerated()), id: \.element.id) { i, entry in
                 RemoteImage(url: TMDB.backdrop(entry.item.backdropPath, "w1280")
                                 ?? TMDB.poster(entry.item.posterPath, "w780"))
+                    // Ширину жёстко ограничиваем контейнером: иначе .fill-картинка
+                    // выкладывается шире экрана (height*aspect) и раздувает весь стек.
                     .frame(height: height)
-                    .frame(maxWidth: .infinity)
+                    .containerRelativeFrame(.horizontal)
+                    .clipped()
                     .opacity(Double(max(0, 1 - abs(CGFloat(i) - pagePos))))
             }
         }
@@ -113,12 +116,14 @@ struct HeroCarousel: View {
                 if let logo = entry.logoPath {
                     RemoteImage(url: TMDB.poster(logo, "w500"), contentMode: .fit)
                         .frame(maxWidth: 260, maxHeight: 110)
+                        .shadow(color: .black.opacity(0.55), radius: 8, y: 2)
                 } else {
                     Text(entry.item.title)
                         .font(.system(size: 30, weight: .heavy))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .padding(.horizontal, 24)
+                        .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
                 }
 
                 HStack(spacing: 12) {

@@ -103,8 +103,11 @@ struct DetailView: View {
         let h = UIScreen.main.bounds.height * 0.48
         return ZStack(alignment: .bottom) {
             RemoteImage(url: TMDB.backdrop(detail?.backdropPath, "w1280") ?? TMDB.poster(detail?.posterPath, "w780"))
+                // Ширину ограничиваем контейнером: .fill-картинка иначе выходит шире
+                // экрана (height*aspect) и раздувает весь стек → контент уезжает влево.
                 .frame(height: h)
-                .frame(maxWidth: .infinity)
+                .containerRelativeFrame(.horizontal)
+                .clipped()
                 .offset(y: scrollY > 0 ? scrollY * 0.4 : 0)
                 .scaleEffect(scrollY < 0 ? 1 + min(-scrollY, 400) / h : 1 + min(max(scrollY, 0), 700) / 3500,
                              anchor: .top)
@@ -122,11 +125,13 @@ struct DetailView: View {
                 if let logoPath {
                     RemoteImage(url: TMDB.poster(logoPath, "w500"), contentMode: .fit)
                         .frame(maxWidth: 280, maxHeight: 120)
+                        .shadow(color: .black.opacity(0.55), radius: 10, y: 2)
                 } else if let detail {
                     Text(detail.displayTitle)
                         .font(.system(size: 32, weight: .heavy))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
+                        .shadow(color: .black.opacity(0.6), radius: 8, y: 2)
                 }
             }
             .padding(.bottom, 14)
