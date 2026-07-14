@@ -287,6 +287,7 @@ struct CombinedCredits: Codable {
 struct PersonExternalIds: Codable {
     let instagramId: String?
     let twitterId: String?
+    let wikidataId: String?
 }
 
 struct PersonDetail: Codable {

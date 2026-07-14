@@ -10,6 +10,7 @@ struct PersonView: View {
 
     @State private var person: PersonDetail?
     @State private var bio: String = ""
+    @State private var awards: [AwardRow] = []
     @State private var error: String?
     @State private var bioExpanded = false
 
@@ -35,6 +36,8 @@ struct PersonView: View {
                         }
                         .padding(.horizontal, 20)
                     }
+
+                    AwardsSection(awards: awards)
 
                     creditShelves(p)
                     Color.clear.frame(height: 40)
@@ -140,6 +143,9 @@ struct PersonView: View {
                 bio = b
             } else {
                 bio = (try? await TMDB.personBioEn(personId)) ?? ""
+            }
+            if let wdid = p.externalIds?.wikidataId, !wdid.isEmpty {
+                awards = await Wikidata.personAwards(wdid)
             }
         } catch {
             self.error = "Не удалось загрузить"

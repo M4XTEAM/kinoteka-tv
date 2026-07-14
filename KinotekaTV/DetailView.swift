@@ -15,6 +15,7 @@ struct DetailView: View {
     @State private var detail: MediaDetail?
     @State private var logoPath: String?
     @State private var stills: [String] = []
+    @State private var awards: [AwardRow] = []
     @State private var trailer: VideoItem?
     @State private var error: String?
     @State private var scrollY: CGFloat = 0
@@ -198,6 +199,8 @@ struct DetailView: View {
         }
 
         stillsShelf()
+
+        AwardsSection(awards: awards)
 
         if route.type == .movie {
             financeBlock(d)
@@ -634,6 +637,11 @@ struct DetailView: View {
                 wid = nil
             }
             widResolved = true
+
+            // Награды (Wikidata) — грузим последними, не блокируя основной контент.
+            if let wdid = d.externalIds?.wikidataId, !wdid.isEmpty {
+                awards = await Wikidata.titleAwards(wdid)
+            }
         } catch {
             self.error = "Не удалось загрузить"
         }
