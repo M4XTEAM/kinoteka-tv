@@ -102,6 +102,13 @@ struct BrowseView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                Picker("", selection: Binding(get: { route.type }, set: { setType($0) })) {
+                    Text("Фильмы").tag(MediaType.movie)
+                    Text("Сериалы").tag(MediaType.tv)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 20)
+
                 filters
                 PosterGrid(items: items) { loadMore() }
                 if loading { LoadingView() }
@@ -129,16 +136,6 @@ struct BrowseView: View {
     private var filters: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                // Тип.
-                Menu {
-                    Button("Фильмы") { setType(.movie) }
-                    Button("Сериалы") { setType(.tv) }
-                } label: {
-                    filterChip(route.type == .movie ? "Фильмы" : "Сериалы")
-                }
-                .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
-
                 // Жанр.
                 Menu {
                     Button("Все жанры") { setGenre(nil) }

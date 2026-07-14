@@ -284,6 +284,11 @@ struct CombinedCredits: Codable {
     let crew: [PersonCredit]?
 }
 
+struct PersonExternalIds: Codable {
+    let instagramId: String?
+    let twitterId: String?
+}
+
 struct PersonDetail: Codable {
     let id: Int
     let name: String
@@ -294,6 +299,7 @@ struct PersonDetail: Codable {
     let profilePath: String?
     let knownForDepartment: String?
     let combinedCredits: CombinedCredits?
+    let externalIds: PersonExternalIds?
 }
 
 // ---- Watch providers ----

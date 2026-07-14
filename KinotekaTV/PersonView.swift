@@ -76,6 +76,23 @@ struct PersonView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
+                if let ig = p.externalIds?.instagramId, !ig.isEmpty,
+                   let url = URL(string: "https://instagram.com/\(ig)") {
+                    Link(destination: url) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "camera.fill")
+                            Text("@\(ig)")
+                                .lineLimit(1)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.plain)
+                    .tint(Theme.accent)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                    .padding(.top, 2)
+                }
             }
             Spacer()
         }

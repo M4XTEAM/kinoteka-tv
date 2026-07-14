@@ -158,7 +158,7 @@ enum TMDB {
     // ---- Персона ----
     static func person(_ id: Int) async throws -> PersonDetail {
         try await fetch(PersonDetail.self, path: "/person/\(id)", params: [
-            "append_to_response": "combined_credits",
+            "append_to_response": "combined_credits,external_ids",
         ])
     }
 
